@@ -1,0 +1,1 @@
+[{"id":1,"title":"Nombre del producto","description":"Descripción del producto","code":"Código del producto","price":100,"status":true,"stock":10,"category":"Categoría del producto","thumbnails":["ruta/imagen1.jpg","ruta/imagen2.jpg"]}]
