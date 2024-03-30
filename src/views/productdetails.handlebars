@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <h1>{{title}}</h1>
+    <p><strong>Precio:</strong> {{price}}</p>
+    <p><strong>Descripción:</strong> {{description}}</p>
+    <p><strong>Categoría:</strong> {{category}}</p>
+    <p><strong>Stock:</strong> {{stock}}</p>
+    <p><strong>Status:</strong> {{status}}</p>
+    {{#each thumbnails}}
+        <img src="{{this}}" alt="Imagen del producto">
+    {{/each}}
+    <!-- Botón para agregar al carrito -->
+    <form action="/cart/add" method="post">
+        <input type="hidden" name="productId" value="{{ product._id }}">
+        <button type="submit">Agregar al carrito</button>
+    </form>
+</body>
+</html>

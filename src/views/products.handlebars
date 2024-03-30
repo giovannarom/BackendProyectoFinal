@@ -1,0 +1,32 @@
+{{#if isValid}}
+<h2>Listado de productos</h2>
+<hr>
+<div>
+    {{#each docs}}
+    <div>
+        <p><strong> Title:</strong> <a href="/products/{{this._id}}">{{this.title}}</a> &nbsp;</p>
+        <!-- Botón para agregar al carrito -->
+        <form action="/cart/add" method="post">
+            <input type="hidden" name="productId" value="{{this._id}}">
+            <button type="submit">Agregar al carrito</button>
+        </form>
+    </div>
+    <br/>
+    {{/each}}
+</div>
+<br/>
+<hr>
+<div>
+    {{#if hasPrevPage}}
+        <a href={{this.prevLink}}>Anterior</a>
+    {{/if}}
+    &nbsp;
+    {{this.page}}
+    &nbsp;
+     {{#if hasNextPage}}
+        <a href={{this.nextLink}}>Siguiente</a>
+    {{/if}} 
+</div>
+{{else}}
+<h2>No hay productos para mostrar</h2>
+{{/if}}

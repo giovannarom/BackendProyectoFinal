@@ -1,66 +1,49 @@
 import fs from 'fs';
 import path from 'path';
 import { Router } from 'express';
+import ProductManager from '../src/dao/services/productManager.js';
 
+const productManager = new ProductManager();
 const productsRouter = Router();
 const pathProducts = path.resolve('data', 'products.json');
 
-// Cart Unique ID
-function generateUniqueProductID(productList) {
-    let maxID = 0;
-    for (const cart of productList) {
-        if (cart.id > maxID) {
-            maxID = cart.id;
-        }
-    }
-    return maxID + 1;
-}
-
 //Routes
-productsRouter.post('/', (req, res) => {
-    // (POST) Create new cart
-    try{
-        let products = fs.readFileSync(pathProducts, "utf-8");
-        let parsedProducts = JSON.parse(products);
-        const newProductID = generateUniqueProductID(parsedProducts);
+
+// 1 - (POST) Create new product
+productsRouter.post('/', async(req, res) => {
+    try {
         const { title, description, code, price, stock, category, thumbnails } = req.body;
         if (!title || !description || !code || !price || !stock || !category) {
             return res.status(400).json({ message: "Todos los campos son obligatorios" });
         }
-        console.log(title)
-        let newProduct = {
-            id: newProductID,
+
+        // Crear el nuevo producto utilizando el ProductManager
+        const newProduct = await productManager.addProduct({
             title,
             description,
             code,
             price,
-            status: true, // El status es true por defecto
+            status: true,
             stock,
             category,
             thumbnails: thumbnails || []
-        };
-        parsedProducts.push(newProduct)
-        let data = JSON.stringify(parsedProducts)
-        fs.writeFileSync(pathProducts, data, null)
-        res.status(201).json({ id: newProductID, message: "Producto creado correctamente" });
+        });
+
+        // Devolver el nuevo producto creado como respuesta
+        res.status(201).json({ id: newProduct._id, message: "Producto creado correctamente" });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error al crear el producto" });
     }
 });
 
-
-productsRouter.get('/:pid/', (req, res) => {
-    //(GET) Show product by id
+// 2 - (GET) Get product by id
+productsRouter.get('/:pid/', async (req, res) => {
     try {
-        //Convertir el string a número
-        let productId = parseInt(req.params.pid);
-        let products = fs.readFileSync(pathProducts, "utf-8");
-        let parsedProducts = JSON.parse(products);
-        //Encontrar el producto que tiene ese ID
-        let finalProduct = parsedProducts.find((product) => product.id === productId);
-        if (finalProduct) {
-            res.status(200).json(finalProduct);
+        const productId = req.params.pid;
+        const product = await productManager.getById(productId);
+        if (product) {
+            res.status(200).json(product);
         } else {
             res.status(404).json({ message: "Producto no encontrado" });
         }
@@ -70,75 +53,81 @@ productsRouter.get('/:pid/', (req, res) => {
     }
 });
 
-productsRouter.get('/', (req, res) => {
-    //(GET) Show all products
+// 3 - (GET) Show all products
+productsRouter.get('/', async (req, res) => {
     try {
-        let products = fs.readFileSync(pathProducts, "utf-8");
-        let parsedProducts = JSON.parse(products);
+        const { page, limit, sort, category, available } = req.query;
 
-        // Verificar 'limit'
-        const limit = parseInt(req.query.limit);
-        if (isNaN(limit)) {
-            // Devolver todos los productos
-            res.status(200).json(parsedProducts);
-        } else {
-            // Devolver los primeros 'limit' productos
-            const limitedProducts = parsedProducts.slice(0, limit);
-            res.status(200).json(limitedProducts);
-        }
+        // Obtener los resultados paginados utilizando el ProductManager
+        const result = await productManager.getAll({
+            page: page || 1,
+            limit: limit || 10,
+            sort,
+            category,
+            available
+        });
+
+        // Formatear la respuesta según el formato requerido
+        const formattedResponse = {
+            status: 'success',
+            payload: result.docs,
+            totalPages: result.totalPages,
+            prevPage: result.prevPage || null,
+            nextPage: result.nextPage || null,
+            page: result.page,
+            hasPrevPage: result.hasPrevPage,
+            hasNextPage: result.hasNextPage,
+            prevLink: result.prevPage ? `${req.protocol}://${req.get('host')}${req.baseUrl}?page=${result.prevPage}&limit=${limit || 10}` : null,
+            nextLink: result.nextPage ? `${req.protocol}://${req.get('host')}${req.baseUrl}?page=${result.nextPage}&limit=${limit || 10}` : null
+        };
+
+        res.json(formattedResponse);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Error al mostrar productos" });
+        res.status(500).json({ status: 'error', message: error.message });
     }
 });
 
-productsRouter.put('/:pid/', (req, res) => {
-    //(PUT) Edit product by id
+// 4 - (PUT) Edit product by id
+productsRouter.put('/:pid/', async(req, res) => {
     try {
-        // Convertir el string a número
-        let productId = parseInt(req.params.pid);
-        let products = fs.readFileSync(pathProducts, "utf-8");
-        let parsedProducts = JSON.parse(products);
-        // Encontrar el producto que tiene ese ID
-        let finalProductIndex = parsedProducts.findIndex((product) => product.id === productId);
-        if (finalProductIndex !== -1) {
-            let finalProduct = parsedProducts[finalProductIndex];
-            // Actualizar los campos del producto
-            Object.assign(finalProduct, req.body);
-            parsedProducts[finalProductIndex] = finalProduct;
-            fs.writeFileSync(pathProducts, JSON.stringify(parsedProducts));
-            res.status(200).json({ message: "Producto modificado correctamente", updatedProduct: finalProduct });
-        } else {
-            res.status(404).json({ message: "Producto no encontrado" });
+        const productId = req.params.pid;
+        const productData = req.body;
+
+        // Actualizar el producto utilizando el ProductManager
+        const result = await productManager.updateProduct(productId, productData);
+        
+        // Si no se encontró el producto para actualizar
+        if (!result) {
+            return res.status(404).json({ message: "Producto no encontrado" });
         }
+
+        // Si el producto fue actualizado exitosamente
+        res.status(200).json({ message: result });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "Error al modificar el producto" });
+        res.status(500).json({ message: "Error al actualizar el producto" });
     }
 });
 
-productsRouter.delete('/:pid/', (req, res) => {
-    //(DELETE) Delete product by id
+// 5 - (DELETE) Delete product by id
+productsRouter.delete('/:pid/', async (req, res) => {
     try {
-        // Convertir el string a número
-        let productId = parseInt(req.params.pid);
-        let products = fs.readFileSync(pathProducts, "utf-8");
-        let parsedProducts = JSON.parse(products);
-        // Encontrar el índice del producto que tiene ese ID
-        let finalProductIndex = parsedProducts.findIndex((product) => product.id === productId);
-        if (finalProductIndex !== -1) {
-            // Eliminar el producto del arreglo de productos
-            parsedProducts.splice(finalProductIndex, 1);
-            // Escribir los productos actualizados de vuelta al archivo JSON
-            fs.writeFileSync(pathProducts, JSON.stringify(parsedProducts));
-            res.status(200).json({ message: "Producto eliminado correctamente" });
-        } else {
-            res.status(404).json({ message: "Producto no encontrado" });
+        const productId = req.params.pid;
+
+        // Eliminar el producto utilizando el ProductManager
+        const result = await productManager.deleteProduct(productId);
+        
+        // Si no se encontró el producto para eliminar
+        if (!result) {
+            return res.status(404).json({ message: "Producto no encontrado" });
         }
+
+        // Si el producto fue eliminado exitosamente
+        res.status(200).json({ message: "Producto eliminado correctamente" });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error al eliminar el producto" });
     }
 });
 
-export default  productsRouter; 
+export default productsRouter; 

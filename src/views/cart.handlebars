@@ -1,0 +1,9 @@
+<div>
+   <h1>{{ title }}</h1>
+   {{#each products}}
+        <div>
+            <p><strong>Producto:</strong> {{ this.title }}</p>
+            <p><strong>Cantidad:</strong> {{ this.quantity }}</p>
+        </div>
+    {{/each}}
+</div>
