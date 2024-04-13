@@ -18,7 +18,7 @@ router.get("/products", async (req, res) => {
   if (!page) page = 1;
   const result = await ProductModel.paginate(
     {},
-    { page, limit: 6, lean: true }
+    { page, limit: 3, lean: true }
   );
 
   result.isValid = page >= 1 && page <= result.totalPages; //variable booleana

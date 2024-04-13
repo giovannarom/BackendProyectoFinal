@@ -1,12 +1,15 @@
 import { cartModel } from "../models/carts.js";
 import ProductModel from "../models/products.js";
+import mongoose from 'mongoose';
+
+const ObjectId = mongoose.Types.ObjectId;
 
 export default class CartManager {
     
     constructor() {
         console.log("CartManager working");
     }
-    
+
     // 1 - Get All products
     getAll = async () => {
         try {
@@ -20,7 +23,7 @@ export default class CartManager {
     // 2 - Get Cart by ID
     getCartById = async (id) => {
         try {
-            const cart = await cartModel.findById(id);
+            const cart = await cartModel.findById(id).populate('products.product');
             if (!cart) throw new Error('El carrito no existe');
             return cart;
         } catch (err) {
@@ -72,19 +75,38 @@ export default class CartManager {
             throw new Error("Error deleting product from cart: " + err.message);
         }
     }
-
+    
     // 6 - Actualizar carrito con un arreglo de productos
     actualizarCarritoConProductos = async (cid, nuevosProductos) => {
         try {
-            const carrito = await cartModel.findByIdAndUpdate(cid, { products: nuevosProductos }, { new: true });
+            // Obtener el carrito existente por su ID
+            const carrito = await cartModel.findById(cid);
             if (!carrito) throw new Error('El carrito no existe');
-            // Verificar si la actualización fue exitosa
-            if (carrito) console.log('El carrito se actualizó correctamente');
+    
+            // Actualizar o agregar los productos en el carrito
+            nuevosProductos.forEach(nuevoProducto => {
+                const indice = carrito.products.findIndex(producto => producto.product.equals(new ObjectId(nuevoProducto.product)));
+                if (indice !== -1) {
+                    // Si el producto ya existe en el carrito, actualizar la cantidad
+                    carrito.products[indice].quantity = nuevoProducto.quantity;
+                } else {
+                    // Si el producto no existe en el carrito, agregarlo
+                    carrito.products.push(nuevoProducto);
+                }
+            });
+    
+            // Eliminar los productos que no están presentes en la lista de nuevos productos
+            carrito.products = carrito.products.filter(producto => {
+                return nuevosProductos.some(nuevoProducto => new ObjectId(nuevoProducto.product).equals(producto.product));
+            });
+
+            // Guardar y devolver el carrito actualizado
+            await carrito.save();
             return carrito;
         } catch (err) {
-            throw new Error("Error al actualizar el carrito con productos: " + err.message);
-        }
+        throw new Error("Error al actualizar el carrito con productos: " + err.message);}
     }
+
 
     // 7 - Actualizar cantidad de ejemplares del producto en el carrito
     actualizarCantidadProducto = async (cid, pid, cantidad) => {
@@ -103,5 +125,24 @@ export default class CartManager {
             throw new Error("Error al actualizar la cantidad del producto en el carrito: " + err.message);
         }
     }
+
+    //8 - Borrar todos los productos del carrito
+    borrarTodosLosProductos = async (cid) => {
+        try {
+            // Obtener el carrito por su ID
+            const carrito = await cartModel.findById(cid);
+            if (!carrito) {
+                throw new Error('El carrito no existe');
+            }
+            // Borrar todos los productos del carrito
+            carrito.products = [];
+            await carrito.save();
+            // Devolver el carrito actualizado
+            return carrito;
+        } catch (err) {
+            throw new Error('Error al borrar todos los productos del carrito: ' + err.message);
+        }
+    }
+
 }
 

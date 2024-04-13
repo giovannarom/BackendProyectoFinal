@@ -45,7 +45,7 @@ cartsRouter.post('/:cid/product/:pid', async (req, res) => {
 // 4 - (PUT) Update cart with product array
 cartsRouter.put('/:cid', async (req, res) => {
     const { cid } = req.params;
-    const { products } = req.body;
+    const  products  = req.body;
     try {
         const carritoActualizado = await cartManager.actualizarCarritoConProductos(cid, products);
         res.status(200).json({ message: 'Carrito actualizado correctamente', carrito: carritoActualizado });
@@ -53,6 +53,7 @@ cartsRouter.put('/:cid', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 // 5 - (PUT) Update quantity of a product
 cartsRouter.put('/:cid/products/:pid', async (req, res) => {
@@ -72,6 +73,18 @@ cartsRouter.delete('/:cid/products/:pid', async (req, res) => {
     try {
         const carritoActualizado = await cartManager.deleteProduct(cid, pid);
         res.status(200).json({ message: 'Producto eliminado del carrito correctamente', carrito: carritoActualizado });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// 7 - Delete all products from cart
+cartsRouter.delete('/:cid', async (req, res) => {
+    const { cid } = req.params;
+    try {
+        // Llamar al método para borrar todos los productos del carrito por su ID
+        const carritoActualizado = await cartManager.borrarTodosLosProductos(cid);
+        res.status(200).json({ message: 'Se borraron todos los productos del carrito correctamente', carrito: carritoActualizado });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
